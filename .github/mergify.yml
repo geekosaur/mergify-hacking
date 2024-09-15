@@ -1,5 +1,7 @@
 # Mergify config derived from https://github.com/haskell/cabal so I can
-# test configuration changes.
+# test configuration changes. Issue/PR references are in that repo, not here.
+#
+# --------
 
 # Note: We do not use the rebase or fast-forward strategies to merge PRs,
 # because that loses information needed by changelog-d to associate commits
@@ -18,6 +20,8 @@ pull_request_rules:
       # nobody seeems to know why this conditional is reversed, but
       # it works.
       - updated-at<1 days ago
+      - comment.edges.node.lastEditedAt<1 days ago
+      - '#reviews-threads-unresolved=0'
       - or:
         - label=merge me
         - label=squash+merge me
