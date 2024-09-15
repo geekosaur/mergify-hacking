@@ -1,0 +1,153 @@
+# Mergify config derived from https://github.com/haskell/cabal so I can
+# test configuration changes.
+
+# Note: We do not use the rebase or fast-forward strategies to merge PRs,
+# because that loses information needed by changelog-d to associate commits
+# with PRs.
+
+pull_request_rules:
+
+  # implementing PR delay logic: apply a label after 1 day of inactivity
+  # the label will allow Mergify to merge (see #8442, #8448)
+  - actions:
+      label:
+        add:
+          - merge delay passed
+    name: Wait for 1 day before validating merge
+    conditions:
+      # nobody seeems to know why this conditional is reversed, but
+      # it works.
+      - updated-at<1 days ago
+      - or:
+        - label=merge me
+        - label=squash+merge me
+        - label=merge+no rebase
+      - '#approved-reviews-by>=1'
+
+  # label when Mergify is ready but waiting for the above
+  - actions:
+      label:
+        add:
+          - ready and waiting
+    name: Waiting out merge delay (used by bot)
+    conditions:
+      - base=main
+      - -draft
+      - -closed
+      - or:
+        - label=merge me
+        - label=squash+merge me
+        - label=merge+no rebase
+      - '#approved-reviews-by>=1'
+      - '#changes-requested-reviews-by=0'
+      # oy
+      # lifted these from branch protection imports
+      - check-success=test
+
+  # rebase+merge strategy
+  - actions:
+      queue:
+        name: default
+    name: Put pull requests in the rebase+merge queue
+    conditions:
+      - base=main
+      - label=merge me
+      - label=merge delay passed
+      - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
+
+  # merge+squash strategy
+  - actions:
+      queue:
+        name: squash-merge
+    name: Put pull requests in the squash+merge queue
+    conditions:
+      - base=main
+      - label=squash+merge me
+      - label=merge delay passed
+      - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
+
+  # merge+no rebase strategy
+  # use this only in cases where the normal merge workflow won't work, as
+  # when a PR is from an organization account and we don't have permissions
+  # on it so can't rebase. IMPORTANT: THE PR OWNER MUST REBASE MANUALLY.
+  - actions:
+      merge:
+        method: merge
+    name: Merge "merge+no rebase" pull requests directly (without a queue)
+    conditions:
+      - base=main
+      - label=merge+no rebase
+      - label=merge delay passed
+      - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
+
+  # merge strategy for release branches
+  - actions:
+      queue:
+        name: default
+    name: Put release branch pull requests in the rebase+merge queue
+    conditions:
+      - label=merge me
+      - base!=main
+      - -body~=backport
+      - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
+
+  # merge+squash strategy for release branches
+  - actions:
+      queue:
+        name: squash-merge
+    name: Put release branch pull requests in the squash+merge queue
+    conditions:
+      - base!=main
+      - label=squash+merge me
+      - -body~=backport
+      - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
+
+  # merge strategy for backports: require 1 approver instead of 2
+  - actions:
+      queue:
+        name: default
+    name: Put backports in the rebase+merge queue
+    conditions:
+      - label=merge me
+      - base!=main
+      - body~=backport
+      - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
+
+  # merge+squash strategy for backports: require 1 approver instead of 2
+  - actions:
+      queue:
+        name: squash-merge
+    name: Put backports in the squash+merge queue
+    conditions:
+      - label=squash+merge me
+      - base!=main
+      - body~=backport
+      - '#approved-reviews-by>=1'
+      - '-label~=^blocked:'
+
+  # backports should be labeled as such
+  - actions:
+      label:
+        add:
+          - backport
+    name: Label backports as such
+    conditions:
+      - body~=automatic backport
+
+queue_rules:
+  # Mergify now requires different queues for different strategies
+  - name: default
+    update_bot_account: geekosaur
+    merge_method: merge
+    update_method: rebase
+
+  - name: squash-merge
+    update_bot_account: geekosaur
+    merge_method: squash
+    update_method: merge
