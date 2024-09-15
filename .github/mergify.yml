@@ -20,8 +20,9 @@ pull_request_rules:
       # nobody seeems to know why this conditional is reversed, but
       # it works.
       - updated-at<1 days ago
-      - comment.edges.node.lastEditedAt<1 days ago
-      - '#reviews-threads-unresolved=0'
+        # sure enough, no GraphQL attribs here
+        # - comment.edges.node.lastEditedAt<1 days ago
+      - '#review-threads-unresolved=0'
       - or:
         - label=merge me
         - label=squash+merge me
